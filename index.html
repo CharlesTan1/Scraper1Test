@@ -336,9 +336,12 @@
             `).join('');
         }
 
+        // Fixed escapeHtml function – handles non‑string values safely
         function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
+            if (unsafe === null || unsafe === undefined) return '';
+            // Convert to string (handles numbers, booleans, etc.)
+            const str = String(unsafe);
+            return str
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
