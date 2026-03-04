@@ -1,257 +1,84 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Destructoid Game Scraper</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f0f2f5;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        header {
-            background: #1a1a2e;
-            color: white;
-            padding: 2rem 1rem;
-            text-align: center;
-        }
-        header h1 { margin-bottom: 0.5rem; }
-        header p { opacity: 0.9; }
-        .container {
-            max-width: 1300px;
-            margin: 2rem auto;
-            padding: 0 2rem;
-            flex: 1;
-        }
-        .controls {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        }
-        .btn {
-            background: #0f3460;
-            color: white;
-            border: none;
-            padding: 0.8rem 2rem;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn:hover { background: #162b4d; }
-        .btn:disabled {
-            background: #aaa;
-            cursor: not-allowed;
-        }
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-        }
-        .search-box input {
-            width: 100%;
-            padding: 0.8rem 1rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            font-size: 1.2rem;
-            color: #666;
-        }
-        .games-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        .game-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-        .game-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
-        }
-        .game-content {
-            padding: 1.5rem;
-            flex: 1;
-        }
-        .game-title {
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: #1a1a2e;
-        }
-        .game-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
-            margin: 0.75rem 0;
-            font-size: 0.9rem;
-            color: #555;
-        }
-        .game-meta span {
-            background: #f0f2f5;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-        }
-        .field {
-            margin: 0.5rem 0;
-            font-size: 0.95rem;
-        }
-        .field strong {
-            color: #333;
-            display: inline-block;
-            min-width: 90px;
-        }
-        .not-avail {
-            color: #999;
-            font-style: italic;
-        }
-        .game-link {
-            display: block;
-            text-align: center;
-            background: #f8f9fa;
-            padding: 0.8rem;
-            color: #0f3460;
-            text-decoration: none;
-            font-weight: 500;
-            border-top: 1px solid #eee;
-            transition: background 0.2s;
-        }
-        .game-link:hover {
-            background: #e9ecef;
-            text-decoration: underline;
-        }
-        footer {
-            background: #1a1a2e;
-            color: white;
-            text-align: center;
-            padding: 1.5rem;
-            margin-top: 2rem;
-        }
-    </style>
-</head>
-<body>
-    <header>
-        <h1>🎮 Destructoid Game Scraper</h1>
-        <p>Live data extracted from destructoid.com/game-hub/ – no hardcoded information</p>
-    </header>
-
-    <div class="container">
-        <div class="controls">
-            <button class="btn" id="scrapeBtn" onclick="scrapeGames()">🔄 Scrape Games</button>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Filter by title or platform..." disabled>
-            </div>
-        </div>
-
-        <div id="loading" class="loading" style="display: none;">⏳ Scraping in progress... please wait (10‑20 seconds)</div>
-        <div id="gamesContainer" class="games-grid"></div>
+<!-- Add this to your controls section -->
+<div class="url-input-section" style="margin-bottom: 20px;">
+    <h3>Scrape from URL</h3>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <input type="url" 
+               id="urlInput" 
+               placeholder="Enter game page URL (e.g., https://www.destructoid.com/game-hub/arc-raiders/)" 
+               style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        <button class="btn" id="scrapeUrlBtn">Scrape URL</button>
+        <button class="btn" id="destructoidMenuBtn" style="background: #4a4a6a;">🎮 Destructoid Menu</button>
     </div>
+    <p style="margin-top: 5px; color: #666; font-size: 0.9em;">
+        Works with Destructoid, IGN, GameSpot, and many other gaming sites
+    </p>
+</div>
 
-    <footer>
-        <p>Data provided for educational purposes – All rights belong to Destructoid</p>
-    </footer>
-
-    <script>
-        // ✅ Your live Vercel backend URL
-        const BACKEND_URL = 'https://scraperbackend.vercel.app';
-
-        let allGames = [];
-
-        async function scrapeGames() {
-            const btn = document.getElementById('scrapeBtn');
-            const loading = document.getElementById('loading');
-            const searchInput = document.getElementById('searchInput');
-            const container = document.getElementById('gamesContainer');
-
-            btn.disabled = true;
-            loading.style.display = 'block';
-            container.innerHTML = '';
-            searchInput.disabled = true;
-
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/scrape`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status}`);
-                }
-                const games = await response.json();
-                if (games.error) {
-                    throw new Error(games.error);
-                }
-
-                allGames = games;
-                displayGames(games);
-                searchInput.disabled = false;
-                searchInput.value = '';
-            } catch (err) {
-                container.innerHTML = `<p style="color: red; text-align: center;">❌ Error: ${err.message}</p>`;
-            } finally {
-                btn.disabled = false;
-                loading.style.display = 'none';
+<script>
+    const BACKEND_URL = 'https://scraperbackend.vercel.app';
+    
+    // Destructoid menu button (your original feature)
+    document.getElementById('destructoidMenuBtn').addEventListener('click', scrapeDestructoidMenu);
+    
+    // URL input button
+    document.getElementById('scrapeUrlBtn').addEventListener('click', scrapeFromUrl);
+    
+    async function scrapeDestructoidMenu() {
+        await scrapeGames('menu');
+    }
+    
+    async function scrapeFromUrl() {
+        const url = document.getElementById('urlInput').value.trim();
+        if (!url) {
+            alert('Please enter a URL');
+            return;
+        }
+        await scrapeGames('url', url);
+    }
+    
+    async function scrapeGames(mode, url = null) {
+        const btn = mode === 'menu' ? 
+            document.getElementById('destructoidMenuBtn') : 
+            document.getElementById('scrapeUrlBtn');
+        const loading = document.getElementById('loading');
+        const container = document.getElementById('gamesContainer');
+        const searchInput = document.getElementById('searchInput');
+        
+        btn.disabled = true;
+        loading.style.display = 'block';
+        container.innerHTML = '';
+        searchInput.disabled = true;
+        
+        try {
+            let response;
+            if (mode === 'menu') {
+                response = await fetch(`${BACKEND_URL}/api/scrape`);
+            } else {
+                response = await fetch(`${BACKEND_URL}/api/scrape-url`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
             }
+            
+            if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+            
+            const games = await response.json();
+            if (games.error) throw new Error(games.error);
+            
+            allGames = games;
+            displayGames(games);
+            searchInput.disabled = false;
+            
+        } catch (err) {
+            container.innerHTML = `<p style="color: red;">❌ Error: ${err.message}</p>`;
+        } finally {
+            btn.disabled = false;
+            loading.style.display = 'none';
         }
-
-        function displayGames(games) {
-            const container = document.getElementById('gamesContainer');
-            if (!games.length) {
-                container.innerHTML = '<p style="text-align: center;">No games found.</p>';
-                return;
-            }
-            container.innerHTML = games.map(game => `
-                <div class="game-card">
-                    <div class="game-content">
-                        <div class="game-title">${escapeHtml(game.title)}</div>
-                        <div class="game-meta">
-                            <span>📅 ${escapeHtml(game.release_date)}</span>
-                            <span>🎮 ${escapeHtml(game.platforms)}</span>
-                        </div>
-                        <div class="field"><strong>Developer:</strong> ${escapeHtml(game.developer)}</div>
-                        <div class="field"><strong>Publisher:</strong> ${escapeHtml(game.publisher)}</div>
-                        <div class="field"><strong>Features:</strong> <span class="${game.key_features === 'Not Available' ? 'not-avail' : ''}">${escapeHtml(game.key_features)}</span></div>
-                    </div>
-                    <a class="game-link" href="${escapeHtml(game.url)}" target="_blank" rel="noopener">View on Destructoid →</a>
-                </div>
-            `).join('');
-        }
-
-        // Simple escaping to prevent XSS
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Filter as user types
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
-            const filtered = allGames.filter(game =>
-                game.title.toLowerCase().includes(term) ||
-                game.platforms.toLowerCase().includes(term)
-            );
-            displayGames(filtered);
-        });
-    </script>
-</body>
-</html>
+    }
+    
+    // Your existing displayGames and escapeHtml functions remain the same
+</script>
