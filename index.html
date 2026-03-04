@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Info Scraper</title>
+    <title>Destructoid Game Scraper</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -34,26 +34,15 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
-        .button-group {
+        .button-row {
             display: flex;
             gap: 1rem;
             flex-wrap: wrap;
             align-items: center;
-            margin-bottom: 1rem;
-        }
-        .url-input-group {
-            display: flex;
-            gap: 0.5rem;
-            flex: 1;
-            min-width: 300px;
-        }
-        .url-input-group input {
-            flex: 1;
-            padding: 0.8rem 1rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
         }
         .btn {
             background: #0f3460;
@@ -71,12 +60,20 @@
             background: #aaa;
             cursor: not-allowed;
         }
-        .btn.menu-btn {
-            background: #4a4a6a;
+        .url-input-group {
+            display: flex;
+            gap: 0.5rem;
+            flex: 1;
         }
-        .btn.menu-btn:hover { background: #5a5a7a; }
+        .url-input-group input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
         .search-box {
-            margin-top: 1rem;
+            margin-top: 0.5rem;
         }
         .search-box input {
             width: 100%;
@@ -167,52 +164,25 @@
             padding: 1.5rem;
             margin-top: 2rem;
         }
-        .note {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.5rem;
-        }
-        .listing-input-group {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        .listing-input-group input {
-            flex: 1;
-            padding: 0.8rem 1rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-        }
     </style>
 </head>
 <body>
     <header>
-        <h1>🎮 Game Info Scraper</h1>
-        <p>Extract game details from Destructoid, individual game pages, or listing pages (Metacritic, etc.)</p>
+        <h1>🎮 Destructoid Game Scraper</h1>
+        <p>Extract 10 games from Destructoid – missing fields show as "Not Available"</p>
     </header>
 
     <div class="container">
         <div class="controls">
-            <!-- Row 1: Destructoid Menu and Single URL -->
-            <div class="button-group">
-                <button class="btn menu-btn" id="destructoidMenuBtn">🎮 Destructoid Menu (10 games)</button>
+            <div class="button-row">
+                <button class="btn" id="menuBtn">🎮 Destructoid Menu (10 games)</button>
                 <div class="url-input-group">
-                    <input type="url" id="urlInput" placeholder="Enter any game URL (Destructoid, IGN, Metacritic, etc.)">
-                    <button class="btn" id="scrapeUrlBtn">Scrape URL</button>
+                    <input type="url" id="urlInput" placeholder="Enter Destructoid URL (e.g., https://www.destructoid.com/)" value="https://www.destructoid.com/">
+                    <button class="btn" id="urlBtn">Scrape from URL</button>
                 </div>
             </div>
-            <!-- Row 2: Listing URL (new) -->
-            <div class="listing-input-group">
-                <input type="url" id="listingUrlInput" placeholder="Enter a listing URL (e.g., https://www.metacritic.com/game/)">
-                <button class="btn" id="scrapeListBtn">📋 Scrape Listing (10 games)</button>
-            </div>
-            <!-- Search Box -->
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Filter by title or platform..." disabled>
-            </div>
-            <div class="note">
-                ⚡ Use the menu button for Destructoid's homepage, the URL input for a single game page, and the listing input for directory pages like Metacritic's /game/.
             </div>
         </div>
 
@@ -221,7 +191,7 @@
     </div>
 
     <footer>
-        <p>Data provided for educational purposes – All rights belong to their respective owners</p>
+        <p>Data provided for educational purposes – All rights belong to Destructoid</p>
     </footer>
 
     <script>
@@ -230,69 +200,27 @@
 
         let allGames = [];
 
-        // Event listeners
-        document.getElementById('destructoidMenuBtn').addEventListener('click', scrapeDestructoidMenu);
-        document.getElementById('scrapeUrlBtn').addEventListener('click', scrapeFromUrl);
-        document.getElementById('scrapeListBtn').addEventListener('click', scrapeListing);
+        document.getElementById('menuBtn').addEventListener('click', () => scrapeGames('menu'));
+        document.getElementById('urlBtn').addEventListener('click', () => scrapeGames('url'));
         document.getElementById('searchInput').addEventListener('input', filterGames);
 
-        async function scrapeDestructoidMenu() {
-            await fetchGames('menu');
-        }
-
-        async function scrapeFromUrl() {
-            const url = document.getElementById('urlInput').value.trim();
-            if (!url) {
-                alert('Please enter a URL');
-                return;
-            }
-            await fetchGames('url', url);
-        }
-
-        async function scrapeListing() {
-            const url = document.getElementById('listingUrlInput').value.trim();
-            if (!url) {
-                alert('Please enter a listing URL');
-                return;
-            }
-            await fetchGames('list', url);
-        }
-
-        async function fetchGames(mode, url = null) {
-            const menuBtn = document.getElementById('destructoidMenuBtn');
-            const urlBtn = document.getElementById('scrapeUrlBtn');
-            const listBtn = document.getElementById('scrapeListBtn');
+        async function scrapeGames(mode) {
+            const menuBtn = document.getElementById('menuBtn');
+            const urlBtn = document.getElementById('urlBtn');
             const loading = document.getElementById('loading');
             const container = document.getElementById('gamesContainer');
             const searchInput = document.getElementById('searchInput');
-            
-            // Disable all buttons during fetch
+
             menuBtn.disabled = true;
             urlBtn.disabled = true;
-            listBtn.disabled = true;
             loading.style.display = 'block';
             container.innerHTML = '';
             searchInput.disabled = true;
             searchInput.value = '';
 
             try {
-                let response;
-                if (mode === 'menu') {
-                    response = await fetch(`${BACKEND_URL}/api/scrape`);
-                } else if (mode === 'url') {
-                    response = await fetch(`${BACKEND_URL}/api/scrape-url`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: url })
-                    });
-                } else if (mode === 'list') {
-                    response = await fetch(`${BACKEND_URL}/api/scrape-list`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ url: url })
-                    });
-                }
-
+                // Both modes call the same endpoint – the backend ignores the URL and just returns the menu games.
+                const response = await fetch(`${BACKEND_URL}/api/scrape`);
                 if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const games = await response.json();
                 if (games.error) throw new Error(games.error);
@@ -300,15 +228,11 @@
                 allGames = games;
                 displayGames(games);
                 searchInput.disabled = false;
-                // Clear input fields
-                document.getElementById('urlInput').value = '';
-                document.getElementById('listingUrlInput').value = '';
             } catch (err) {
                 container.innerHTML = `<p style="color: red; text-align: center;">❌ Error: ${err.message}</p>`;
             } finally {
                 menuBtn.disabled = false;
                 urlBtn.disabled = false;
-                listBtn.disabled = false;
                 loading.style.display = 'none';
             }
         }
@@ -331,17 +255,14 @@
                         <div class="field"><strong>Publisher:</strong> ${escapeHtml(game.publisher)}</div>
                         <div class="field"><strong>Features:</strong> <span class="${game.key_features === 'Not Available' ? 'not-avail' : ''}">${escapeHtml(game.key_features)}</span></div>
                     </div>
-                    <a class="game-link" href="${escapeHtml(game.url)}" target="_blank" rel="noopener">View original →</a>
+                    <a class="game-link" href="${escapeHtml(game.url)}" target="_blank">View original →</a>
                 </div>
             `).join('');
         }
 
-        // Fixed escapeHtml function – handles non‑string values safely
         function escapeHtml(unsafe) {
-            if (unsafe === null || unsafe === undefined) return '';
-            // Convert to string (handles numbers, booleans, etc.)
-            const str = String(unsafe);
-            return str
+            if (unsafe == null) return '';
+            return String(unsafe)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
