@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background: #f0f2f5;
             display: flex;
             flex-direction: column;
@@ -20,7 +20,6 @@
             text-align: center;
         }
         header h1 { margin-bottom: 0.5rem; }
-        header p { opacity: 0.9; }
         .container {
             max-width: 1300px;
             margin: 2rem auto;
@@ -56,10 +55,7 @@
             white-space: nowrap;
         }
         .btn:hover { background: #162b4d; }
-        .btn:disabled {
-            background: #aaa;
-            cursor: not-allowed;
-        }
+        .btn:disabled { background: #aaa; cursor: not-allowed; }
         .url-input-group {
             display: flex;
             gap: 0.5rem;
@@ -71,9 +67,6 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             font-size: 1rem;
-        }
-        .search-box {
-            margin-top: 0.5rem;
         }
         .search-box input {
             width: 100%;
@@ -106,10 +99,7 @@
             transform: translateY(-4px);
             box-shadow: 0 12px 24px rgba(0,0,0,0.12);
         }
-        .game-content {
-            padding: 1.5rem;
-            flex: 1;
-        }
+        .game-content { padding: 1.5rem; flex: 1; }
         .game-title {
             font-size: 1.3rem;
             font-weight: 600;
@@ -129,19 +119,9 @@
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
         }
-        .field {
-            margin: 0.5rem 0;
-            font-size: 0.95rem;
-        }
-        .field strong {
-            color: #333;
-            display: inline-block;
-            min-width: 90px;
-        }
-        .not-avail {
-            color: #999;
-            font-style: italic;
-        }
+        .field { margin: 0.5rem 0; font-size: 0.95rem; }
+        .field strong { display: inline-block; min-width: 90px; }
+        .not-avail { color: #999; font-style: italic; }
         .game-link {
             display: block;
             text-align: center;
@@ -169,16 +149,16 @@
 <body>
     <header>
         <h1>🎮 Destructoid Game Scraper</h1>
-        <p>Extract 10 games from Destructoid – missing fields show as "Not Available"</p>
+        <p>Extract 10 games – missing fields filled from Wikipedia</p>
     </header>
 
     <div class="container">
         <div class="controls">
             <div class="button-row">
-                <button class="btn" id="menuBtn">🎮 Destructoid Menu</button>
+                <button class="btn" id="menuBtn">🎮 Destructoid Menu (Homepage)</button>
                 <div class="url-input-group">
-                    <input type="url" id="urlInput" placeholder="Enter Destructoid URL (e.g., https://www.destructoid.com/)" value="https://www.destructoid.com/">
-                    <button class="btn" id="urlBtn">Scrape from URL</button>
+                    <input type="url" id="urlInput" placeholder="Enter Destructoid URL" value="https://www.destructoid.com/">
+                    <button class="btn" id="urlBtn">Scrape from this URL</button>
                 </div>
             </div>
             <div class="search-box">
@@ -186,12 +166,12 @@
             </div>
         </div>
 
-        <div id="loading" class="loading" style="display: none;">⏳ Scraping in progress... please wait</div>
+        <div id="loading" class="loading" style="display: none;">⏳ Scraping... please wait</div>
         <div id="gamesContainer" class="games-grid"></div>
     </div>
 
     <footer>
-        <p>Data provided for educational purposes – All rights belong to Destructoid</p>
+        <p>Data for educational purposes – All rights belong to respective owners</p>
     </footer>
 
     <script>
@@ -200,11 +180,19 @@
 
         let allGames = [];
 
-        document.getElementById('menuBtn').addEventListener('click', () => scrapeGames('menu'));
-        document.getElementById('urlBtn').addEventListener('click', () => scrapeGames('url'));
+        document.getElementById('menuBtn').addEventListener('click', scrapeHomepage);
+        document.getElementById('urlBtn').addEventListener('click', scrapeFromUrl);
         document.getElementById('searchInput').addEventListener('input', filterGames);
 
-        async function scrapeGames(mode) {
+        async function scrapeHomepage() { await fetchGames('homepage'); }
+
+        async function scrapeFromUrl() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) { alert('Please enter a URL'); return; }
+            await fetchGames('url', url);
+        }
+
+        async function fetchGames(mode, url = null) {
             const menuBtn = document.getElementById('menuBtn');
             const urlBtn = document.getElementById('urlBtn');
             const loading = document.getElementById('loading');
@@ -219,8 +207,16 @@
             searchInput.value = '';
 
             try {
-                // Both modes call the same endpoint
-                const response = await fetch(`${BACKEND_URL}/api/scrape`);
+                let response;
+                if (mode === 'homepage') {
+                    response = await fetch(`${BACKEND_URL}/api/scrape`);
+                } else {
+                    response = await fetch(`${BACKEND_URL}/api/scrape-from-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url })
+                    });
+                }
                 if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const games = await response.json();
                 if (games.error) throw new Error(games.error);
