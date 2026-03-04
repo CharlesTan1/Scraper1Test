@@ -175,7 +175,7 @@
     <div class="container">
         <div class="controls">
             <div class="button-row">
-                <button class="btn" id="menuBtn">🎮 Destructoid Menu (10 games)</button>
+                <button class="btn" id="menuBtn">🎮 Destructoid Menu</button>
                 <div class="url-input-group">
                     <input type="url" id="urlInput" placeholder="Enter Destructoid URL (e.g., https://www.destructoid.com/)" value="https://www.destructoid.com/">
                     <button class="btn" id="urlBtn">Scrape from URL</button>
@@ -219,7 +219,7 @@
             searchInput.value = '';
 
             try {
-                // Both modes call the same endpoint – the backend ignores the URL and just returns the menu games.
+                // Both modes call the same endpoint
                 const response = await fetch(`${BACKEND_URL}/api/scrape`);
                 if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const games = await response.json();
