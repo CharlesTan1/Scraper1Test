@@ -7,7 +7,7 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f2f5;
             display: flex;
             flex-direction: column;
@@ -20,6 +20,7 @@
             text-align: center;
         }
         header h1 { margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; }
         .container {
             max-width: 1300px;
             margin: 2rem auto;
@@ -149,7 +150,7 @@
 <body>
     <header>
         <h1>🎮 Destructoid Game Scraper</h1>
-        <p>Extract 10 games – missing fields filled from Wikipedia</p>
+        <p>Extract 10 games from Destructoid – missing fields show as "Not Available"</p>
     </header>
 
     <div class="container">
@@ -176,7 +177,7 @@
 
     <script>
         // 🔧 REPLACE WITH YOUR ACTUAL BACKEND URL
-        const BACKEND_URL = 'https://scraperbackend2.vercel.app';
+        const BACKEND_URL = 'https://your-backend.vercel.app';
 
         let allGames = [];
 
