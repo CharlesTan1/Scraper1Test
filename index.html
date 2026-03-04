@@ -172,28 +172,47 @@
             color: #666;
             margin-top: 0.5rem;
         }
+        .listing-input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .listing-input-group input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
     </style>
 </head>
 <body>
     <header>
         <h1>🎮 Game Info Scraper</h1>
-        <p>Extract game details from Destructoid or any game URL</p>
+        <p>Extract game details from Destructoid, individual game pages, or listing pages (Metacritic, etc.)</p>
     </header>
 
     <div class="container">
         <div class="controls">
+            <!-- Row 1: Destructoid Menu and Single URL -->
             <div class="button-group">
                 <button class="btn menu-btn" id="destructoidMenuBtn">🎮 Destructoid Menu (10 games)</button>
                 <div class="url-input-group">
-                    <input type="url" id="urlInput" placeholder="Enter any game URL (Destructoid, IGN, etc.)">
+                    <input type="url" id="urlInput" placeholder="Enter any game URL (Destructoid, IGN, Metacritic, etc.)">
                     <button class="btn" id="scrapeUrlBtn">Scrape URL</button>
                 </div>
             </div>
+            <!-- Row 2: Listing URL (new) -->
+            <div class="listing-input-group">
+                <input type="url" id="listingUrlInput" placeholder="Enter a listing URL (e.g., https://www.metacritic.com/game/)">
+                <button class="btn" id="scrapeListBtn">📋 Scrape Listing (10 games)</button>
+            </div>
+            <!-- Search Box -->
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="Filter by title or platform..." disabled>
             </div>
             <div class="note">
-                ⚡ For Destructoid, you can use either the menu button or paste a specific URL.
+                ⚡ Use the menu button for Destructoid's homepage, the URL input for a single game page, and the listing input for directory pages like Metacritic's /game/.
             </div>
         </div>
 
@@ -207,12 +226,14 @@
 
     <script>
         // 🔧 REPLACE WITH YOUR ACTUAL BACKEND URL
-       const BACKEND_URL = 'https://scraperbackend2.vercel.app';
+        const BACKEND_URL = 'https://scraperbackend2.vercel.app';
 
         let allGames = [];
 
+        // Event listeners
         document.getElementById('destructoidMenuBtn').addEventListener('click', scrapeDestructoidMenu);
         document.getElementById('scrapeUrlBtn').addEventListener('click', scrapeFromUrl);
+        document.getElementById('scrapeListBtn').addEventListener('click', scrapeListing);
         document.getElementById('searchInput').addEventListener('input', filterGames);
 
         async function scrapeDestructoidMenu() {
@@ -228,15 +249,27 @@
             await fetchGames('url', url);
         }
 
+        async function scrapeListing() {
+            const url = document.getElementById('listingUrlInput').value.trim();
+            if (!url) {
+                alert('Please enter a listing URL');
+                return;
+            }
+            await fetchGames('list', url);
+        }
+
         async function fetchGames(mode, url = null) {
             const menuBtn = document.getElementById('destructoidMenuBtn');
             const urlBtn = document.getElementById('scrapeUrlBtn');
+            const listBtn = document.getElementById('scrapeListBtn');
             const loading = document.getElementById('loading');
             const container = document.getElementById('gamesContainer');
             const searchInput = document.getElementById('searchInput');
             
+            // Disable all buttons during fetch
             menuBtn.disabled = true;
             urlBtn.disabled = true;
+            listBtn.disabled = true;
             loading.style.display = 'block';
             container.innerHTML = '';
             searchInput.disabled = true;
@@ -246,8 +279,14 @@
                 let response;
                 if (mode === 'menu') {
                     response = await fetch(`${BACKEND_URL}/api/scrape`);
-                } else {
+                } else if (mode === 'url') {
                     response = await fetch(`${BACKEND_URL}/api/scrape-url`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: url })
+                    });
+                } else if (mode === 'list') {
+                    response = await fetch(`${BACKEND_URL}/api/scrape-list`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: url })
@@ -261,12 +300,15 @@
                 allGames = games;
                 displayGames(games);
                 searchInput.disabled = false;
+                // Clear input fields
                 document.getElementById('urlInput').value = '';
+                document.getElementById('listingUrlInput').value = '';
             } catch (err) {
                 container.innerHTML = `<p style="color: red; text-align: center;">❌ Error: ${err.message}</p>`;
             } finally {
                 menuBtn.disabled = false;
                 urlBtn.disabled = false;
+                listBtn.disabled = false;
                 loading.style.display = 'none';
             }
         }
@@ -315,4 +357,3 @@
     </script>
 </body>
 </html>
-
