@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Destructoid Game Scraper (Static)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #1e1e2f;
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        header h1 {
+            margin-bottom: 0.5rem;
+        }
+        main {
+            flex: 1;
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            width: 100%;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #scrape-form {
+            display: flex;
+            gap: 0.5rem;
+            flex: 2;
+            min-width: 300px;
+        }
+        #scrape-form input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #scrape-form button {
+            padding: 0.5rem 1rem;
+            background: #1e1e2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #scrape-form button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .action-buttons button {
+            padding: 0.5rem 1rem;
+            background: #1e1e2f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .games-container {
+            background: white;
+            border-radius: 8px;
+            overflow-x: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #1e1e2f;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background: #f1f1f1;
+        }
+        td a {
+            color: #1e1e2f;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        td a:hover {
+            text-decoration: underline;
+        }
+        footer {
+            background: #1e1e2f;
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+        }
+        .no-results {
+            text-align: center;
+            padding: 2rem;
+            font-style: italic;
+            color: #666;
+        }
+        .loader {
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+            color: #1e1e2f;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            #scrape-form {
+                width: 100%;
+            }
+            .search-box {
+                width: 100%;
+            }
+            th, td {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎮 Destructoid Game Scraper</h1>
+        <p>Live scrape from Destructoid reviews (via CORS proxy)</p>
+    </header>
+
+    <main>
+        <section class="controls">
+            <form id="scrape-form">
+                <input type="url" name="url" id="url" 
+                       placeholder="Enter Destructoid listing URL (default: reviews)" 
+                       value="https://www.destructoid.com/category/reviews/">
+                <button type="submit" id="scrape-btn">Scrape New Data</button>
+            </form>
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Search by game title...">
+            </div>
+        </section>
+
+        <div class="action-buttons">
+            <button id="download-json">📥 Download JSON</button>
+        </div>
+
+        <section class="games-container" id="games-container">
+            <div class="loader" id="loader" style="display: none;">Scraping... please wait (this may take a minute)</div>
+            <div id="table-container"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Data scraped from destructoid.com via allorigins.win — Fields marked "Not Available" are missing on the source.</p>
+    </footer>
+
+    <script>
+        // ---------- Configuration ----------
+        const PROXY_URL = 'https://api.allorigins.win/raw?url=';  // Free CORS proxy
+        const DEFAULT_LISTING = 'https://www.destructoid.com/category/reviews/';
+        const MAX_GAMES = 10;
+
+        // ---------- Global State ----------
+        let games = [];               // Array of game objects
+        let filteredGames = [];        // After search
+
+        // DOM elements
+        const form = document.getElementById('scrape-form');
+        const urlInput = document.getElementById('url');
+        const scrapeBtn = document.getElementById('scrape-btn');
+        const searchInput = document.getElementById('search');
+        const downloadBtn = document.getElementById('download-json');
+        const loader = document.getElementById('loader');
+        const tableContainer = document.getElementById('table-container');
+
+        // ---------- Utility: fetch via proxy ----------
+        async function fetchViaProxy(url) {
+            const response = await fetch(PROXY_URL + encodeURIComponent(url));
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.text();
+        }
+
+        // ---------- Extract article links from listing ----------
+        function extractArticleLinks(html, baseUrl) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const links = new Set();
+
+            // Destructoid reviews often use <a> inside <h2 class="entry-title"> or similar
+            // We'll look for any <a> whose href contains '/review/' or is in the reviews category
+            const anchors = doc.querySelectorAll('a[href]');
+            anchors.forEach(a => {
+                let href = a.getAttribute('href');
+                if (!href) return;
+                // Make absolute URL
+                if (href.startsWith('/')) {
+                    href = 'https://www.destructoid.com' + href;
+                } else if (!href.startsWith('http')) {
+                    return; // skip relative weirdness
+                }
+                // Check if it's a review page
+                if (href.includes('/review/') || href.includes('/category/reviews/')) {
+                    links.add(href);
+                }
+            });
+
+            // Convert to array and limit
+            return Array.from(links).slice(0, MAX_GAMES);
+        }
+
+        // ---------- Extract game info from article page ----------
+        function extractGameInfo(html, url) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Game Title (usually <h1>)
+            const titleEl = doc.querySelector('h1');
+            const title = titleEl ? titleEl.textContent.trim() : 'Not Available';
+
+            // Release Date: look for <time> element
+            const timeEl = doc.querySelector('time');
+            let releaseDate = 'Not Available';
+            if (timeEl) {
+                releaseDate = timeEl.getAttribute('datetime') || timeEl.textContent.trim();
+            } else {
+                // fallback: maybe meta tag
+                const metaDate = doc.querySelector('meta[property="article:published_time"]');
+                if (metaDate) releaseDate = metaDate.getAttribute('content');
+            }
+
+            // Key Features – not present on Destructoid
+            const keyFeatures = 'Not Available';
+
+            // Platform – try to find in text
+            let platform = 'Not Available';
+            const platformKeywords = ['PlayStation', 'Xbox', 'Nintendo', 'PC', 'Switch', 'PS5', 'PS4', 'Xbox Series', 'Steam'];
+            const bodyText = doc.body.textContent;
+            for (let kw of platformKeywords) {
+                if (bodyText.includes(kw)) {
+                    platform = kw;
+                    break;
+                }
+            }
+
+            // Developer & Publisher – not available
+            const developer = 'Not Available';
+            const publisher = 'Not Available';
+
+            return {
+                title,
+                release_date: releaseDate,
+                key_features: keyFeatures,
+                platform,
+                developer,
+                publisher,
+                url
+            };
+        }
+
+        // ---------- Main scraping function ----------
+        async function scrape(listingUrl) {
+            games = [];
+            filteredGames = [];
+            renderTable();
+
+            loader.style.display = 'block';
+            scrapeBtn.disabled = true;
+
+            try {
+                // 1. Fetch listing page
+                console.log('Fetching listing:', listingUrl);
+                const listingHtml = await fetchViaProxy(listingUrl);
+
+                // 2. Extract article links
+                const articleUrls = extractArticleLinks(listingHtml, listingUrl);
+                if (articleUrls.length === 0) {
+                    alert('No review links found on the page. The site structure may have changed.');
+                    return;
+                }
+
+                // 3. Visit each article page (sequentially to avoid overwhelming proxy)
+                for (let i = 0; i < articleUrls.length; i++) {
+                    const url = articleUrls[i];
+                    console.log(`Scraping (${i+1}/${articleUrls.length}):`, url);
+                    try {
+                        const articleHtml = await fetchViaProxy(url);
+                        const game = extractGameInfo(articleHtml, url);
+                        games.push(game);
+                    } catch (err) {
+                        console.warn('Failed to fetch article:', url, err);
+                        // Still push a placeholder to keep count?
+                        games.push({
+                            title: 'Error loading',
+                            release_date: 'Not Available',
+                            key_features: 'Not Available',
+                            platform: 'Not Available',
+                            developer: 'Not Available',
+                            publisher: 'Not Available',
+                            url
+                        });
+                    }
+                    // small delay between requests
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+
+                // Update filtered list and render
+                filteredGames = [...games];
+                renderTable();
+            } catch (err) {
+                console.error(err);
+                alert('Scraping failed: ' + err.message);
+            } finally {
+                loader.style.display = 'none';
+                scrapeBtn.disabled = false;
+            }
+        }
+
+        // ---------- Render table with current filteredGames ----------
+        function renderTable() {
+            if (filteredGames.length === 0) {
+                tableContainer.innerHTML = '<p class="no-results">No games to display. Try scraping first.</p>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Release Date</th>
+                            <th>Key Features</th>
+                            <th>Platform</th>
+                            <th>Developer</th>
+                            <th>Publisher</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filteredGames.forEach(game => {
+                html += `
+                    <tr>
+                        <td><a href="${game.url}" target="_blank">${escapeHtml(game.title)}</a></td>
+                        <td>${escapeHtml(game.release_date)}</td>
+                        <td>${escapeHtml(game.key_features)}</td>
+                        <td>${escapeHtml(game.platform)}</td>
+                        <td>${escapeHtml(game.developer)}</td>
+                        <td>${escapeHtml(game.publisher)}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            tableContainer.innerHTML = html;
+        }
+
+        // Simple escape to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ---------- Search filter ----------
+        function filterGames(query) {
+            if (!query) {
+                filteredGames = [...games];
+            } else {
+                const q = query.toLowerCase();
+                filteredGames = games.filter(g => g.title.toLowerCase().includes(q));
+            }
+            renderTable();
+        }
+
+        // ---------- Download JSON ----------
+        function downloadJSON() {
+            if (games.length === 0) {
+                alert('No data to download. Please scrape first.');
+                return;
+            }
+            const dataStr = JSON.stringify(games, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'destructoid_games.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ---------- Event Listeners ----------
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            let url = urlInput.value.trim();
+            if (!url) url = DEFAULT_LISTING;
+            scrape(url);
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            filterGames(e.target.value);
+        });
+
+        downloadBtn.addEventListener('click', downloadJSON);
+
+        // Optionally preload with default URL on page load
+        window.addEventListener('load', () => {
+            // Scrape default on load? Better to let user click.
+            // But we can show empty state.
+            tableContainer.innerHTML = '<p class="no-results">Click "Scrape New Data" to start.</p>';
+        });
+    </script>
+</body>
+</html>
