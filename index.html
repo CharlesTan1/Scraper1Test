@@ -211,7 +211,6 @@
 
         let allGames = [];
 
-        // Event listeners
         document.getElementById('destructoidMenuBtn').addEventListener('click', scrapeDestructoidMenu);
         document.getElementById('scrapeUrlBtn').addEventListener('click', scrapeFromUrl);
         document.getElementById('searchInput').addEventListener('input', filterGames);
@@ -262,7 +261,7 @@
                 allGames = games;
                 displayGames(games);
                 searchInput.disabled = false;
-                document.getElementById('urlInput').value = ''; // clear input
+                document.getElementById('urlInput').value = '';
             } catch (err) {
                 container.innerHTML = `<p style="color: red; text-align: center;">❌ Error: ${err.message}</p>`;
             } finally {
@@ -278,36 +277,21 @@
                 container.innerHTML = '<p style="text-align: center;">No games found.</p>';
                 return;
             }
-            container.innerHTML = games.map(game => {
-                // Build source badges if available (from fusion)
-                let sourceInfo = '';
-                if (game.sources_used && game.sources_used.length) {
-                    sourceInfo = '<div style="margin-top: 0.5rem; font-size: 0.8rem; color: #666;">';
-                    game.sources_used.forEach(s => {
-                        Object.entries(s).forEach(([field, src]) => {
-                            sourceInfo += `<span style="background: #eef; padding: 2px 6px; border-radius: 12px; margin-right: 4px;">${field} from ${src}</span>`;
-                        });
-                    });
-                    sourceInfo += '</div>';
-                }
-                
-                return `
-                    <div class="game-card">
-                        <div class="game-content">
-                            <div class="game-title">${escapeHtml(game.title)}</div>
-                            <div class="game-meta">
-                                <span>📅 ${escapeHtml(game.release_date)}</span>
-                                <span>🎮 ${escapeHtml(game.platforms)}</span>
-                            </div>
-                            <div class="field"><strong>Developer:</strong> ${escapeHtml(game.developer)}</div>
-                            <div class="field"><strong>Publisher:</strong> ${escapeHtml(game.publisher)}</div>
-                            <div class="field"><strong>Features:</strong> <span class="${game.key_features === 'Not Available' ? 'not-avail' : ''}">${escapeHtml(game.key_features)}</span></div>
-                            ${sourceInfo}
+            container.innerHTML = games.map(game => `
+                <div class="game-card">
+                    <div class="game-content">
+                        <div class="game-title">${escapeHtml(game.title)}</div>
+                        <div class="game-meta">
+                            <span>📅 ${escapeHtml(game.release_date)}</span>
+                            <span>🎮 ${escapeHtml(game.platforms)}</span>
                         </div>
-                        <a class="game-link" href="${escapeHtml(game.url)}" target="_blank" rel="noopener">View original →</a>
+                        <div class="field"><strong>Developer:</strong> ${escapeHtml(game.developer)}</div>
+                        <div class="field"><strong>Publisher:</strong> ${escapeHtml(game.publisher)}</div>
+                        <div class="field"><strong>Features:</strong> <span class="${game.key_features === 'Not Available' ? 'not-avail' : ''}">${escapeHtml(game.key_features)}</span></div>
                     </div>
-                `;
-            }).join('');
+                    <a class="game-link" href="${escapeHtml(game.url)}" target="_blank" rel="noopener">View original →</a>
+                </div>
+            `).join('');
         }
 
         function escapeHtml(unsafe) {
